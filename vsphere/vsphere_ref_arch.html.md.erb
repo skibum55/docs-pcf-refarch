@@ -88,6 +88,10 @@ If your design approach includes PKS, you will have NSX-T included and, though n
 
 Without an SDN environment, you will draw network address space and broadcast domains from the greater datacenter pool. For this approach, you will need to deploy PAS and PKS in a particular alignment.
 
+<%= image_tag('../images/load-balancing.png') %>
+
+[View a larger version of this diagram](../images/load-balancing.png)
+
 Choose VLANs and address space for PAS that does not overlap with PKS
 Load balancing will be performed external to the PCF installation
 Client SSL termination will need to happen either at the load balancer or gorouters, or both, so plan for certs to accomplish this
@@ -185,7 +189,9 @@ Load balancing services to pool systems such as gorouters
 SSL termination at the load balancer
 Distributed routing and firewalling services at the hypervisor
 
+<%= image_tag('../images/pas-with-nsxt.png') %>
 
+[View a larger version of this diagram](../images/pas-with-nsxt.png)
 
 Using the available NCP tile enables a sophisticated container networking stack in place of the built-in “silk” stack and interlocks with NSX-T already deployed in the IaaS. The NCP tile can not be used unless NSX-T has already been established in the IaaS. These technologies can not be retrofitted into an established PKS or PAS installation; please plan accordingly.
 
@@ -237,6 +243,7 @@ NSX IP Block (from which to pull networks for each new namespace)
 Floating IP Pool ID
 IP Pool to use for externally facing IPs (NATs/VIPs)
 
+<%= image_tag('../images/pks-with-nsxt.png') %>
 
 New T1 routers will be spawned on-demand as new namespaces are added to PKS. These can grow rapidly, so a large address block is desired for this use. The size of the address block is configurable and /24 by default.
 
@@ -311,6 +318,7 @@ The primary consumer of storage is the NFS/WebDAV blobstore.
 
 PKS storage sizing is a unique science. Consider the following chart for some guidance on how much storage to allocate based on Pod and Node desires.
 
+<%= image_tag('../images/storage-design.png') %>
 
 ### <a id="high-availability"></a> Compute and HA Considerations
 
@@ -369,17 +377,26 @@ Shared Storage / VSAN
 2 Large edge VM = 8 small LBs
 Pivotal Cloud Foundry: Ops Manager, Bosh Director, PAS / PKS
 
-## <a id="pas-pks"></a> Pulling It All Together
+## <a id="pas-pks"></a> PAS and PKS with NSX-T
 
-A fully meshed PCF 2.x installation based on best practices and reference design considerations will look as follows:
+A fully meshed PCF 2.1 installation designed using the recommendations provided in this topic looks as follows:
 
+<%= image_tag('../images/pas-and-pks.png') %>
 
-Common elements are the NSX T0 router and the associated T1 routers. This approach allows for any possible cross traffic between PKS and PAS apps to stay within the bounds of the T0 and not exit. This also provides a convenient, one-stop access point to the whole installation, making deployment of multiple, identical installations easier to automate.
+[View a larger version of this diagram](../images/pas-and-pks.png)
 
-Note that each design, green PKS and orange PAS, depict a Ops Manager + BOSH Director installation. This is the recommended approach at the time of this publication; you should not share a Ops Manager + BOSH Director install between both PKS and PAS.
+Common components are the NSX T0 router and the associated T1 routers.
+This approach ensures that any cross-traffic between PKS and PAS apps stays within the bounds of the T0.
+This also provides a one-stop access point to the whole installation, which simplifies deployment automation for multiple, identical installations.
 
-AZs are aligned to vSphere clusters, with resource pools an optional organizational tool to place multiple foundations into the same capacity. At the time of this publication, PKS is single-AZ and so is shown using AZ01/Cluster 01 for capacity. You can align PKS to any AZ/cluster desired, but there’s no driving need to keep PKS and PAS in completely separate AZs.
+Note that each design, green PKS and orange PAS, has its own Ops Manager and BOSH Director installation.
+You should not share an Ops Manager and BOSH Director installation between PKS and PAS.
 
-It continues to be a good design choice to use Resource Pools in vSphere Clusters as AZ constructs to stack different installations of PCF. As server capacity continues to increase, the efficiency of deploying independent clusters of server just for one install of one product is low. Customers are commonly deploying servers with 768GB RAM and beyond, so stacking many PCF installations in clusters of these just makes good consumption sense.
+AZs are aligned to vSphere clusters, with resource pools as an optional organizational tool to place multiple foundations into the same capacity.
+PKS v1.0 is a single-AZ deployment.
+You can align PKS to any AZ or cluster.
+Keeping PKS and PAS in completely separate AZs is not required.
 
-You may be tempted to split the PAS and PKS installations into seperate network trees, behind separate T0 routers. Before doing this, review VMware’s best practises in T0 to T0 routing efficiencies and weaknesses to be sure that approach meetsmeats your needs.
+It continues to be a good design choice to use resource pools in vSphere clusters as AZ constructs to stack different installations of PCF. As server capacity continues to increase, the efficiency of deploying independent server clusters only for one installation is low. For example, customers are commonly deploying servers with 768-GB RAM and greater.
+
+If you want to split the PAS and PKS installations into separate network trees, behind separate T0 routers, ensure that approach meets your needs by reviewing VMware’s  recommendations for T0 to T0 routing.
