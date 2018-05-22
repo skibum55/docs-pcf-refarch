@@ -67,20 +67,20 @@ For more information about installing and configuring NSX-T for use with PCF on 
 
 The diagram below shows an architecture for one PCF installation in vSphere clusters, segmented with Resource Pools. More Resource Pools can be added to the existing Clusters to stack more PCF installations into the same capacity.
 
-This design supports long-term use, capacity growth at the IaaS (vSphere) level, PaaS (PCF) level and maximum installation security through the NSX-T firewall. It allocates a minimum of three or more servers to each cluster, as recommended by vSphere, and spreads PCF components across three or another odd number of clusters, as recommended for High Availability.
+This design supports long-term use, capacity growth at the IaaS (vSphere) level, PaaS (PCF) level and maximum installation security through the NSX-T firewall. It allocates a minimum of three or more servers to each cluster, as recommended by vSphere, and spreads PCF components across three or another odd number of clusters, as recommended for [High Availability](../concepts/high-availability.html).
 
 Major areas of consideration are:
 
-SDN or No SDN Deployments (Will NSX be used?)
-Network design and allocations
-PAS only with or without NSX-T
-PKS only with or without NSX-T
-Storage design
-Compute and HA considerations
-Scaling up and capacity management considerations
-PAS and PKS with NSX-T
+* SDN or No SDN Deployments (Will NSX be used?)
+* Network design and allocations
+* PAS only with or without NSX-T
+* PKS only with or without NSX-T
+* Storage design
+* Compute and HA considerations
+* Scaling up and capacity management considerations
+* PAS and PKS with NSX-T
 
-If your design approach includes PKS, you will have NSX-T included and, though not required, that technology opens up many interesting and flexible options. If you want to deploy without NSX-T involved (see separate materials on NSX-V design considerations) you can be successful with PAS and/or PKS native on vSphere but the design choices are very different.
+If your design approach includes PKS, you will have NSX-T included and, though not required, that technology opens up many interesting and flexible options. If you want to deploy without NSX-T involved ([see separate materials on NSX-V design considerations](https://docs.pivotal.io/pivotalcf/2-0/refarch/vsphere/vsphere_ref_arch.html)) you can be successful with PAS and/or PKS native on vSphere but the design choices are very different.
 
 ### <a id="non-sdn"></a> Non-SDN Deployments
 
@@ -92,28 +92,28 @@ Without an SDN environment, you will draw network address space and broadcast do
 
 [View a larger version of this diagram](../images/load-balancing.png)
 
-Choose VLANs and address space for PAS that does not overlap with PKS
-Load balancing will be performed external to the PCF installation
-Client SSL termination will need to happen either at the load balancer or gorouters, or both, so plan for certs to accomplish this
-Firewalling will be accomplished external to the PCF installations
+* Choose VLANs and address space for PAS that does not overlap with PKS
+* Load balancing will be performed external to the PCF installation
+* Client SSL termination will need to happen either at the load balancer or gorouters, or both, so plan for certs to accomplish this
+* Firewalling will be accomplished external to the PCF installations
 
 #### <a id="c2c-cni"></a> C2C and CNI Considerations
 
-Container-to-container networking is a feature of the tile, not the environment
-Changing the C2C strategy after deployment is possible, but with NSX-T, you’ll need both the C2C tile and a infrastructure of NSX-T to be successful.
+* Container-to-container networking is a feature of the tile, not the environment
+* Changing the C2C strategy after deployment is possible, but with NSX-T, you’ll need both the C2C tile and a infrastructure of NSX-T to be successful.
 
 Migrating to an SDN-enabled solution from this design is possible but best considered as a greenfield deployment; inserting a SDN layer under an active PCF installation is very disruptive.
 
 #### <a id="pas"></a> PAS Without SDN
 Pivotal PAS, as a part of the PCF umbrella, is fully functional without any SDN overlay in play. Flexibility and other features are lost without SDN but it is a valid approach. There’s no hard dependency on SDN features in Pivotal PAS to date.
 
-Refer to Installing PAS on vSphere for more information.
+Refer to [Installing PAS on vSphere](../customizing/vsphere.html) for more information.
 
 #### <a id="pks"></a> PKS Without SDN
 
 Pivotal Container Service is supplied with NSX-T SDN included, along with the associated licensing. The assumption is that the reader will want to use all of this technology at once to get full benefit from both. However, the bundled NSX-T SDN solution can be ignored, as there is a built-in network stack (flannel) that takes care of container networking.
 
-Refer to Installing PKS on vSphere for more information on PKS without NSX-T.
+Refer to [Installing PKS on vSphere](https://docs.pivotal.io/runtimes/pks/1-0/installing-pks-vsphere.html) for more information on PKS without NSX-T.
 
 ### <a id="sdn-deployments"></a> SDN-Enabled Deployments With NSX-T
 
@@ -121,60 +121,56 @@ Refer to Installing PKS on vSphere for more information on PKS without NSX-T.
 
 PAS requires a number of statically defined networks to host the main elements it’s composed of. If we consider the “inside” of an NSX-T deployment, we define a series of non-routable address banks that the NSX-T routers will manage for us. Similar to reference designs in the past, those are the following:
 
-NOTE: Relative to reference designs for PCF v1.xx, these static networks have a smaller host address space assigned. With NSX-T, you will find that building for many dynamically assigned networks is a better strategy than a few, very large networks as in the past.
+<p class="note"><strong>Note</strong>: Relative to reference designs for PCF v1.xx, these static networks have a smaller host address space assigned. With NSX-T, you will find that building for many dynamically assigned networks is a better strategy than a few, very large networks as in the past.</p>
 
-Infrastructure - 192.168.1.0/24
-Deployment - 192.168.2.0/24
-Services - 192.168.3.0/24
+* Infrastructure: `192.168.1.0/24`
+* Deployment: `192.168.2.0/24`
+* Services: `192.168.3.0/24`
 
-The Services network is handy for use with Ops Manager tiles that you might add in addition to PAS. You can think of the Services network as the “everything else not PAS” network. Some of these tiles can call for additional network capacity to grow into on demand. Historically, we’ve allowed for a network called “Dynamic Services” for this use. Going forward, it is recommended that you consider adding a network per tile that would need this and pair them up in the tile’s config.
+    The Services network is handy for use with Ops Manager tiles that you might add in addition to PAS. You can think of the Services network as the “everything else not PAS” network. Some of these tiles can call for additional network capacity to grow into on demand. Historically, we’ve allowed for a network called “Dynamic Services” for this use. Going forward, it is recommended that you consider adding a network per tile that would need this and pair them up in the tile’s config.
 
-OD#-Services - 192.168.4.0 - 192.168.9.0 in /24 segments
+* OD#-Services: `192.168.4.0` - `192.168.9.0` in /24 segments
 
-Example: Redis tile asks for “Network” and “Services Network”. The first one is for placing the broker and the second one is for deploying worker VMs to support the service. For this we would deploy a new network “OD-Services1” and tell Reddis to use the “Services” network for the broker and the “OD-Services1” network for the workers. The next tile can also use “Services” for the broker and a new “OD-Services2” network for workers, and so on.
+    Example: Redis tile asks for “Network” and “Services Network”. The first one is for placing the broker and the second one is for deploying worker VMs to support the service. For this we would deploy a new network “OD-Services1” and tell Reddis to use the “Services” network for the broker and the “OD-Services1” network for the workers. The next tile can also use “Services” for the broker and a new “OD-Services2” network for workers, and so on.
 
-Isolation Segment## - 192.168.10.0- 192.168.63.0 in /24 segments
+* Isolation Segment##: `192.168.10.0`- `192.168.63.0` in /24 segments
 
-Isolation Segments can be added quickly and easily to an existing PAS installation. This range of address space is designated for use when adding one of more of them. A new /24 network for this range should be deployed for each new Isolation Segment. There’s reserved capacity for >50 Isolation Segments of >250 VMs per in this address bank.
+    Isolation Segments can be added quickly and easily to an existing PAS installation. This range of address space is designated for use when adding one of more of them. A new /24 network for this range should be deployed for each new Isolation Segment. There’s reserved capacity for >50 Isolation Segments of >250 VMs per in this address bank.
 
-On-Demand-Org## - 192.168.128.0/17 = 128 orgs/foundation
+* On-Demand-Org##: `192.168.128.0/17` = 128 orgs/foundation
 
-New to the PCF 2.x reference design is the concept of dynamically assigned Org networks that are attached to automatically generated NSX T1 routers, a benefit of NSX-T. The operator doesn’t define these networks in Ops Manager, but rather allows for them to get built by supplying a non-overlapping block of address space for this purpose. This is configurable in NCP Configuration in the NSX-T tile in Ops Manager. The default is /24 (every Org gets a new /24).
+    New to the PCF 2.x reference design is the concept of dynamically assigned Org networks that are attached to automatically generated NSX T1 routers, a benefit of NSX-T. The operator doesn’t define these networks in Ops Manager, but rather allows for them to get built by supplying a non-overlapping block of address space for this purpose. This is configurable in NCP Configuration in the NSX-T tile in Ops Manager. The default is /24 (every Org gets a new /24).
 
 This reference uses a pattern that follows previous references, with the main difference being all networks break on the /24 boundary (for easier CIDR math) and the network octet is now numerically sequential (1-2-3).
 
 #### <a id="network-pks"></a> Network Requirements for PKS
 
-PKS - 172.20.0.0/16
+PKS: `172.20.0.0/16`
 
 New to PCF 2.0 is Pivotal Container Service (PKS). When deploying PKS via Ops Manager, you must allow for a block of address space for dynamic networks that PKS will deploy per namespace. The recommended address space is distinctly different that that used with PAS, to give the operator a quick visual queue as to which jobs relate to what service.
 
-Summary
-
 To summarize the complete addressing strategy:
 
-Infrastructure - 192.168.1.0/24
-Deployment - 192.168.2.0/24
-Services - 192.168.3.0/24
-OD#-Services - 192.168.4.0 - 192.168.9.0 in /24 segments
-Isolation-Segment## - 192.168.10.0 - 192.168.63.0 in /24 segments
-Undefined: 192.168.64.0 - 192.168.127.0
-On-Demand-Org## - 192.168.128.0/17
+* Infrastructure - 192.168.1.0/24
+* Deployment - 192.168.2.0/24
+* Services - 192.168.3.0/24
+* OD#-Services - 192.168.4.0 - 192.168.9.0 in /24 segments
+* Isolation-Segment## - 192.168.10.0 - 192.168.63.0 in /24 segments
+* Undefined: 192.168.64.0 - 192.168.127.0
+* On-Demand-Org## - 192.168.128.0/17
 PKS - 172.20.0.0/16
 
 #### <a id="external-routing"></a> Network Requirements for External Routing
 
 Routable external IPs on the Provider side, for example for NATs, PAS Orgs and load balancers get assigned to the T0 router front-ending the PCF installation. There are two approaches to assigning address space blocks to this job, each with its own ramifications.
 
-Without PKS at all, or With PKS Ingress: The T0 router needs some routable address space to advertise on the BGP network with its peers. Select a network range with ample address space that can be split into two logical jobs, one job being an advertised as a route for traffic and the other job is for aligning T0 DNATs/SNATs, load balancers and other jobs. Unlike NSX-V, you will consume much more address space for SNATs than before.
+* Without PKS at all, or With PKS Ingress: The T0 router needs some routable address space to advertise on the BGP network with its peers. Select a network range with ample address space that can be split into two logical jobs, one job being an advertised as a route for traffic and the other job is for aligning T0 DNATs/SNATs, load balancers and other jobs. Unlike NSX-V, you will consume much more address space for SNATs than before.
 
-With PKS No Ingress: Relative to above, this approach has much higher address space consumption for load balancer VIPs, so allow for 4x the address space due to the fact that Kubernetes service types allocate addresses very frequently.
+* With PKS No Ingress: Relative to above, this approach has much higher address space consumption for load balancer VIPs, so allow for 4x the address space due to the fact that Kubernetes service types allocate addresses very frequently.
 
-Reference: Kubernetes Ingress
+    Reference: [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
 
-Provider Routable Address Space: /25 (or /23 for PKS No Ingress)
-
-Add note on how BGP advertisement works and how addresses are allocated for that...
+* Provider Routable Address Space: /25 (or /23 for PKS No Ingress)
 
 NSX-T handles the routing between a T0 router and any T1 routers associated with it. There are no design parameters needed from Pivotal to accomplish this. For the purposes of PCF, the T0/T1 routing relationship “just works”.
 
@@ -182,12 +178,12 @@ NSX-T handles the routing between a T0 router and any T1 routers associated with
 
 Expanding PAS with SDN features is best considered as a greenfield effort. Inserting an SDN layer under a working PAS installation is non-trivial and likely will trigger a rebuild. NSX-T constructs that can be used by PAS include:
 
-Logical Networks (vWires), encapsulated broadcast domains
-VLAN exhaustion avoidance thru the use of Logical Networks
-Routing services and NAT/SNAT to network fence the PCF installation
-Load balancing services to pool systems such as gorouters
-SSL termination at the load balancer
-Distributed routing and firewalling services at the hypervisor
+* Logical Networks (vWires), encapsulated broadcast domains
+* VLAN exhaustion avoidance thru the use of Logical Networks
+* Routing services and NAT/SNAT to network fence the PCF installation
+* Load balancing services to pool systems such as gorouters
+* SSL termination at the load balancer
+* Distributed routing and firewalling services at the hypervisor
 
 <%= image_tag('../images/pas-with-nsxt.png') %>
 
@@ -197,12 +193,12 @@ Using the available NCP tile enables a sophisticated container networking stack 
 
 Be prepared to supply:
 
-NSX Manager Host
-Username/Password
-CA Cert of NSX Manager
-PAS Foundation Name (must match the tag added to T0 router, External NAT Pool, and IP Block)
-Subnet Prefix (controls the size of each Org, defaults to /24, i.e 254 addresses)
-Enable SNAT for Container Networks (Automatically uses an IP from the external NAT pool to SNAT outbound from each Org on a unique IP)
+* NSX Manager Host
+* Username/Password
+* CA Cert of NSX Manager
+* PAS Foundation Name (must match the tag added to T0 router, External NAT Pool, and IP Block)
+* Subnet Prefix (controls the size of each Org, defaults to /24, i.e 254 addresses)
+* Enable SNAT for Container Networks (Automatically uses an IP from the external NAT pool to SNAT outbound from each Org on a unique IP)
 
 Each new “job”, like a Isolation Segment, falls to a broadcast domain/logical switch connected to a T1 router acting as the gateway to that network. This approach provides a convenient DNAT/SNAT control point and a firewall boundary. The one exception to this is the Services network, which shares a T1 router with any associated OD-Services# networks, as all of these are considered part of the same system and inserting any *NATs/firewall rules between them isn’t needed or recommended.
 
@@ -214,10 +210,10 @@ With NSX-T, load balancing is available in the SDN layer as a feature. These loa
 
 Common deployments of load balancing in PAS are:
 
-HTTP/HTTPS traffic to/from gorouters
-TCP traffic to/from tcp routerstcprouters
-MySQL proxies
-Diego Brains
+* HTTP/HTTPS traffic to/from gorouters
+* TCP traffic to/from TCP routers
+* MySQL proxies
+* Diego Brains
 
 NSX-T load balancers can support many VIPs, so it’s best to think of deploying one load balancer per network (T1) and one-to-many VIPs on that load balancer per job. Edge Cluster resources can get consumed quickly, so design carefully how many load balancers are needed vs how much capacity is available for them.
 
@@ -229,19 +225,17 @@ Pivotal Container Service is supplied with NSX-T SDN included, along with the as
 
 Deploy the PKS tile in Ops Manager (either alongside PAS tile or without) and choose “flannel” on the networking tab. Select from networks already identified in Ops Manager to deploy the PKS API Gateway and the Cluster(s). If following the reference design for PAS, you can use the “Services” and “OD-Services#” networks for these jobs. If no PAS networks are available, define a network named “PKS-Services” and another named “PKS-Cluster” in Ops Manager for these jobs.
 
-Need graphic for non-NSX install?
-
 #### <a id="with-nsxt"></a> Deploying with NSX-T
 
 You will supply certain details about the IaaS SDN layer to allow for dynamic constructs to be built. You’ll be asked to supply:
 
-NSX Manager Host
-Username/Password
-CA Cert of NSX Manager
-T0 Router (to connect dynamically created namespace networks to)
-NSX IP Block (from which to pull networks for each new namespace)
-Floating IP Pool ID
-IP Pool to use for externally facing IPs (NATs/VIPs)
+* NSX Manager Host
+* Username/Password
+* CA Cert of NSX Manager
+* T0 Router (to connect dynamically created namespace networks to)
+* NSX IP Block (from which to pull networks for each new namespace)
+* Floating IP Pool ID
+  *IP Pool to use for externally facing IPs (NATs/VIPs)
 
 <%= image_tag('../images/pks-with-nsxt.png') %>
 
@@ -251,13 +245,16 @@ New T1 routers will be spawned on-demand as new namespaces are added to PKS. The
 
 How you select ingress routing influences load balancing choices. You’re going to want both.
 
-Ingress Routing - Layer 7
-Service Type:LoadBalancer - Layer 4
+* Ingress Routing - Layer 7
+* Service Type:LoadBalancer - Layer 4
 
 ##### <a id="layer-7"></a> Ingress Routing - Layer 7
-NSX-T native ingress router is included when deploying with NSX-T. Third party options include Istio or Nginx running as containers in the cluster. Wildcard DNS entries are needed to point at the ingress service in the style of go-routers in PAS. Domain info for ingress is defined in the manifest of the kubernetes deployment. Here is an example.
-NOTE: HTTPS with NSX-T provided ingress is not currently supported
 
+NSX-T native ingress router is included when deploying with NSX-T. Third party options include Istio or Nginx running as containers in the cluster. Wildcard DNS entries are needed to point at the ingress service in the style of go-routers in PAS. Domain info for ingress is defined in the manifest of the kubernetes deployment. Here is an example.
+
+<p class="note"><strong>Note</strong>: HTTPS with NSX-T provided ingress is not currently supported.</p>
+
+```
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -272,11 +269,13 @@ spec:
         backend:
           serviceName: music-service
           servicePort: 8080
+```
 
 ##### <a id="layer-4"></a> Service Type:LoadBalancer - Layer 4
 
-When pushing a kubernetes deployment with type set to “LoadBalancer”, NSX-T automatically creates a new VIP for the deployment on the existing load balancer for that namespace. You will need to specify a listening and translation port in the service, along with a name for tagging. You will also specify a protocol to use. Here is an example.
+When pushing a Kubernetes deployment with type set to “LoadBalancer”, NSX-T automatically creates a new VIP for the deployment on the existing load balancer for that namespace. You will need to specify a listening and translation port in the service, along with a name for tagging. You will also specify a protocol to use. Here is an example.
 
+```
 apiVersion: v1
 kind: Service
 metadata:
@@ -288,19 +287,21 @@ spec:
     targetPort: 8080
     protocol: TCP
     name: web
+```
 
 ### <a id="storage"></a> Storage Design
+
 Shared storage is a requirement for PCF. You can allocate networked storage to the host clusters following one of two common approaches, _horizontal_ or _vertical_. The approach you follow should reflect how your data center arranges its storage and host blocks in its physical layout.
 
-Horizontal: You grant all hosts access to all datastores and assign a subset to each installation. 
+* Horizontal: You grant all hosts access to all datastores and assign a subset to each installation. 
 
     For example, with six datastores `ds01` through `ds06`, you grant all nine hosts access to all six datastores. You then provision your first PCF installation to use stores `ds01` through `ds03`, and your second PCF installation to use `ds04` through `ds06`.
 
-Vertical: You grant each cluster its own dedicated datastores, creating a "cluster-aligned" storage strategy. vSphere VSAN is an example of this architecture. 
+* Vertical: You grant each cluster its own dedicated datastores, creating a "cluster-aligned" storage strategy. vSphere VSAN is an example of this architecture. 
 
-For example, with six datastores `ds01` through `ds06`, you assign datastores `ds01` and `ds02` to your first cluster, `ds03` and `ds04` to your second cluster, and `ds05` and `ds06` to your third cluster. You then provision your first PCF installation to use `ds01`, `ds03`, and `ds05`, and your second PCF installation to use `ds02`, `ds04`, and `ds06`. With this arrangement, all VMs in the same installation and cluster share a dedicated datastore.
+    For example, with six datastores `ds01` through `ds06`, you assign datastores `ds01` and `ds02` to your first cluster, `ds03` and `ds04` to your second cluster, and `ds05` and `ds06` to your third cluster. You then provision your first PCF installation to use `ds01`, `ds03`, and `ds05`, and your second PCF installation to use `ds02`, `ds04`, and `ds06`. With this arrangement, all VMs in the same installation and cluster share a dedicated datastore.
 
-Note: If a datastore is part of a vSphere Storage Cluster using sDRS (storage DRS), you must disable the s-vMotion feature on any datastores used by PCF. Otherwise, s-vMotion activity can rename independent disks and cause BOSH to malfunction. For more information, see <a href="./vsphere_migrate_datastore.html">How to Migrate PCF to a New Datastore in vSphere</a>.
+<p class="note"><strong>Note</strong>: If a datastore is part of a vSphere Storage Cluster using sDRS (storage DRS), you must disable the s-vMotion feature on any datastores used by PCF. Otherwise, s-vMotion activity can rename independent disks and cause BOSH to malfunction. For more information, see <a href="./vsphere_migrate_datastore.html">How to Migrate PCF to a New Datastore in vSphere</a>.</p>
 
 ### Storage Capacity and Type
 
@@ -308,9 +309,9 @@ Capacity
 
 Pivotal recommends the following capacity allocation for PAS installations:
 
-- For production use, at least 8 TB of data storage, either as one 8 TB store or a number of smaller volumes adding up to 8 TB. Frequently-used development may require significantly more storage to accommodate new code and buildpacks. 
+* For production use, at least 8 TB of data storage, either as one 8 TB store or a number of smaller volumes adding up to 8 TB. Frequently-used development may require significantly more storage to accommodate new code and buildpacks. 
 
-- For small installations without many tiles, 4-6 TB. 
+* For small installations without many tiles, 4-6 TB. 
 
 The primary consumer of storage is the NFS/WebDAV blobstore. 
 
@@ -340,14 +341,14 @@ Knowing where to get started with PCF can be a confusing task. The reference mod
 
 A small size PCF 2.x foundation is built using the least number of elements and resources needed to start up a PaaS system. This includes:
 
-1 vSphere cluster/1 AZ
-2 Resource Pools (1 for NSX Components, 1 PAS or PKS)
-3 hosts minimum for vSphere HA (4 hosts for vSphere VSAN)
+* 1 vSphere cluster/1 AZ
+* 2 Resource Pools (1 for NSX Components, 1 PAS or PKS)
+* 3 hosts minimum for vSphere HA (4 hosts for vSphere VSAN)
 Shared Storage / VSAN
-1 NSX Manager
-1 NSX Controller
-1 Large edge VM = 4 small LBs
-Pivotal Cloud Foundry: Ops Manager, Bosh Director, Small-footprint Elastic Runtime
+* 1 NSX Manager
+* 1 NSX Controller
+* 1 Large edge VM = 4 small LBs
+* Pivotal Cloud Foundry: Ops Manager, Bosh Director, Small-footprint Elastic Runtime
 
 This approach is best used as a small starter system, development-only app use or proof-of-concept. The prime reason for categorizing this build as never-for-prod is that SRT (small-footprint Elastic Runtime) has no upgrade path to the standard PAS tile, which is the only supported Elastic Runtime for use as Prod.
 
@@ -355,26 +356,26 @@ This approach is best used as a small starter system, development-only app use o
 
 Growing to a second AZ/cluster enables valuable HA capabilities in the PaaS and IaaS layers. For this design, it is recommended that SRT be replaced (if scaling up) or not used in favor of PAS. A second AZ draws a doubling of compute capacity and an expansion of the NSX-T footprint.
 
-2 vSphere cluster/2 AZ
-3 Resource Pools (1 for NSX Components, 2 PAS / 1 PKS)
-3 hosts minimum for vSphere HA (4 hosts for vSphere VSAN) per cluster
+* 2 vSphere cluster/2 AZ
+* 3 Resource Pools (1 for NSX Components, 2 PAS / 1 PKS)
+* 3 hosts minimum for vSphere HA (4 hosts for vSphere VSAN) per cluster
 Shared Storage / VSAN
-1 NSX Manager
-2 NSX Controller
-1 Large edge VM = 4 small LBs
-Pivotal Cloud Foundry: Ops Manager, Bosh Director, PAS / PKS
+* 1 NSX Manager
+* 2 NSX Controller
+* 1 Large edge VM = 4 small LBs
+* Pivotal Cloud Foundry: Ops Manager, Bosh Director, PAS / PKS
 
 #### <a id="production"></a> Full-Sized Installation
 
 The full production-ready approach calls for the best both the PaaS and IaaS have to offer. A third AZ/cluster can be added and more compute + storage comes with it. NSX-T adds a controller for the third AZ and a second Large Edge is added to the cluster. This design satisfies both the VMware and Pivotal best practices on capacity, network and HA alignments.
 
-3 vSphere cluster/3 AZ
-4 Resource Pools (1 for NSX Components, 3 PAS / 1 PKS)
-3 hosts minimum for vSphere HA (4 hosts for vSphere VSAN)
+* 3 vSphere cluster/3 AZ
+* 4 Resource Pools (1 for NSX Components, 3 PAS / 1 PKS)
+* 3 hosts minimum for vSphere HA (4 hosts for vSphere VSAN)
 Shared Storage / VSAN
-1 NSX Manager
-3 NSX Controller
-2 Large edge VM = 8 small LBs
+* 1 NSX Manager
+* 3 NSX Controller
+* 2 Large edge VM = 8 small LBs
 Pivotal Cloud Foundry: Ops Manager, Bosh Director, PAS / PKS
 
 ## <a id="pas-pks"></a> PAS and PKS with NSX-T
