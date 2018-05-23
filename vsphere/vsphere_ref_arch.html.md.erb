@@ -163,14 +163,16 @@ Expanding PAS with SDN features is best considered as a greenfield effort. Inser
 
 The VMware NSX-T Container Plug-In for PCF tile, which provides a container networking stack, interlocks with NSX-T already deployed in the IaaS. This tile cannot be used unless NSX-T has already been established in the IaaS. These technologies can not be retrofitted into an established PKS or PAS installation.
 
-You need the following:
+To deploy PAS with NSX-T, you need to provide the following in the VMware NSX-T Container Plug-In for PCF tile:
 
 * NSX Manager host
-* Username and password
-* CA certificate of NSX Manager
+* NSX Manager username and password
+* NSX Manager CA certificate
 * PAS foundation name that must match the tag added to T0 router, external NAT pool, and IP block
 * Subnet prefix, which controls the size of each org and defaults to /24, that is, 254 addresses
-* SNAT enabled for container networks (Automatically uses an IP from the external NAT pool to SNAT outbound from each org on a unique IP)
+* SNAT for container networks enabled; automatically uses an IP from the external NAT pool to SNAT outbound from each org on a unique IP
+
+For more information about configuring PAS with NSX-T networking, see [Deploying PAS with NSX-T Networking](../../customizing/vsphere-nsx-t.html).
 
 Each new job, like an isolation segment, falls to a broadcast domain or logical switch connected to a T1 router acting as the gateway to that network.
 This approach provides a DNAT and SNAT control point and a firewall boundary.
@@ -201,34 +203,38 @@ When designing your deployment, consider how many load balancers are needed and 
 
 PKS is supplied with NSX-T SDN included, along with the associated licensing.
 
-You will supply certain details about the IaaS SDN layer to allow for dynamic constructs to be built. You’ll be asked to supply:
+To allow for dynamic constructs to be built, you need to provide the following when configuring the PKS tile:
 
-* NSX Manager Host
-* Username/Password
-* CA Cert of NSX Manager
-* T0 Router (to connect dynamically created namespace networks to)
-* NSX IP Block (from which to pull networks for each new namespace)
-* Floating IP Pool ID
-  *IP Pool to use for externally facing IPs (NATs/VIPs)
+* NSX Manager host
+* NSX Manager username and password
+* NSX Manager CA certificate
+* T0 router to connect dynamically created namespace networks to
+* NSX IP block from which to pull networks for each new namespace
+* Floating IP pool ID
+    *IP pool to use for externally facing IPs (NATs and VIPs)
+
+For more information about configuring PKS with NSX-T networking, see [Installing and Configuring PKS with NSX-T Integration](https://docs.pivotal.io/runtimes/pks/1-0/installing-nsx-t.html).
 
 <%= image_tag('../images/pks-with-nsxt.png') %>
 
-New T1 routers will be spawned on-demand as new namespaces are added to PKS. These can grow rapidly, so a large address block is desired for this use. The size of the address block is configurable and /24 by default.
+New T1 routers are be spawned on-demand as new namespaces are added to PKS. Because these can grow rapidly, a large address block is desired for this use.
+The size of the address block is configurable and /24 by default.
 
-If you want to deploy PKS without NSX-T, see [Deploying Without NSX-T](#without-nsxt) for more information.
+If you want to deploy PKS without NSX-T, see [Deploying PKS Without NSX-T](#without-nsxt) for more information.
 
 ##### <a id="pks-ingress"></a> Ingress Routing and Load Balancing for PKS
 
-How you select ingress routing influences load balancing choices. You’re going to want both.
+This section provides information about ingress routing (Layer 7) and  load balancing (Layer 4) for your PKS deployment.
 
-* Ingress Routing - Layer 7
-* Service Type:LoadBalancer - Layer 4
+##### <a id="layer-7"></a> Ingress Routing
 
-##### <a id="layer-7"></a> Ingress Routing - Layer 7
+NSX-T native ingress router is included when deploying with NSX-T.
+Third-party options include Istio or Nginx running as containers in the cluster.
 
-NSX-T native ingress router is included when deploying with NSX-T. Third party options include Istio or Nginx running as containers in the cluster. Wildcard DNS entries are needed to point at the ingress service in the style of go-routers in PAS. Domain info for ingress is defined in the manifest of the kubernetes deployment. Here is an example.
+Wildcard DNS entries are needed to point at the ingress service in the style of Gorouters in PAS.
+Domain information for ingress is defined in the manifest of the Kubernetes deployment. See the example below.
 
-<p class="note"><strong>Note</strong>: HTTPS with NSX-T provided ingress is not currently supported.</p>
+<p class="note"><strong>Note</strong>: HTTPS with NSX-T-provided ingress is not currently supported.</p>
 
 ```
 apiVersion: extensions/v1beta1
@@ -247,9 +253,12 @@ spec:
           servicePort: 8080
 ```
 
-##### <a id="layer-4"></a> Service Type:LoadBalancer - Layer 4
+##### <a id="layer-4"></a> Load Balancing
 
-When pushing a Kubernetes deployment with type set to “LoadBalancer”, NSX-T automatically creates a new VIP for the deployment on the existing load balancer for that namespace. You will need to specify a listening and translation port in the service, along with a name for tagging. You will also specify a protocol to use. Here is an example.
+When pushing a Kubernetes deployment with type set to `LoadBalancer`, NSX-T automatically creates a new VIP for the deployment on the existing load balancer for that namespace.
+
+You need to specify a listening and translation port in the service, along with a name for tagging.
+You also specify a protocol to use. See the example below.
 
 ```
 apiVersion: v1
@@ -264,13 +273,23 @@ spec:
     protocol: TCP
     name: web
 ```
-#### <a id="without-nsxt"></a> Deploying Without NSX-T
+#### <a id="without-nsxt"></a> Deploying PKS Without NSX-T
 
-Deploy the PKS tile in Ops Manager (either alongside PAS tile or without) and choose “flannel” on the networking tab. Select from networks already identified in Ops Manager to deploy the PKS API Gateway and the Cluster(s). If following the reference design for PAS, you can use the “Services” and “OD-Services#” networks for these jobs. If no PAS networks are available, define a network named “PKS-Services” and another named “PKS-Cluster” in Ops Manager for these jobs.
+You can deploy the PKS tile in Ops Manager either alongside PAS tile or without it.
+
+<p class="note"><strong>Note</strong>: You should not share an Ops Manager and BOSH Director installation between PKS and PAS in a production environment.</p>
+
+If you want to deploy PKS without NSX-T, select **Flannel** as your container network interface on the **Networking** tab of the PKS tile. 
+
+Select from networks already identified in Ops Manager to deploy the PKS API Gateway and the cluster or clusters.
+
+If following the reference design for PAS, you can use the Services and OD-Services# networks for these jobs. If no PAS networks are available, define a network named PKS-Services and another named PKS-Cluster in Ops Manager.
 
 ### <a id="storage"></a> Storage Design
 
-Shared storage is a requirement for PCF. You can allocate networked storage to the host clusters following one of two common approaches, _horizontal_ or _vertical_. The approach you follow should reflect how your data center arranges its storage and host blocks in its physical layout.
+Shared storage is a requirement for PCF.
+You can allocate networked storage to the host clusters following one of two common approaches, _horizontal_ or _vertical_.
+The approach you follow should reflect how your data center arranges its storage and host blocks in its physical layout.
 
 * Horizontal: You grant all hosts access to all datastores and assign a subset to each installation. 
 
@@ -284,78 +303,88 @@ Shared storage is a requirement for PCF. You can allocate networked storage to t
 
 ### Storage Capacity and Type
 
-Capacity
-
 Pivotal recommends the following capacity allocation for PAS installations:
 
-* For production use, at least 8 TB of data storage, either as one 8 TB store or a number of smaller volumes adding up to 8 TB. Frequently-used development may require significantly more storage to accommodate new code and buildpacks. 
+* For production use, at least 8 TB of data storage, either as one 8-TB store or a number of smaller volumes adding up to 8 TB.
+Frequent development may require significantly more storage to accommodate new code and buildpacks. 
 
-* For small installations without many tiles, 4-6 TB. 
+* For small installations, 4-6 TB of data storage is recommended. 
 
-The primary consumer of storage is the NFS/WebDAV blobstore. 
+The primary consumer of storage is the NFS and WebDAV blobstore. 
 
 <p class="note"><strong>Note</strong>: PCF does not currently support using vSphere Storage Clusters with the <a href="#overview">latest versions of PCF</a> validated for the reference architecture. Datastores should be listed in the vSphere tile by their native name, not the cluster name created by vCenter for the storage cluster.</p>
 
-PKS storage sizing is a unique science. Consider the following chart for some guidance on how much storage to allocate based on Pod and Node desires.
+For PKS installations, see the following chart for some guidance on how much storage to allocate based on Pod and Node needs.
 
 <%= image_tag('../images/storage-design.png') %>
 
 ### <a id="high-availability"></a> Compute and HA Considerations
 
-Considering PAS, a consolidation ratio for containers should follow a conservative 4:1 ratio of vCPUs to pCPUs. An even more conservative, meaning safe, consideration is 2:1. While this may seem “light” compared to vSphere standard practice, keep in mind that standard vSphere modeling is based on one OS and one (or only a few) apps per VM. With PAS, you will quickly get to a dozen apps per VM.
+In PAS, a consolidation ratio for containers should follow a conservative 4:1 ratio of vCPUs to pCPUs. An even more conservative ratio is 2:1.
 
-A standard Diego cell by default is 4x16 (XL). At a 4:1 ratio you have a 16 vCPU budget, or about 12 containers after some waste running the OS. If you want to get to more containers in a cell, be sure to scale the vCPUs accordingly, with the caveat that high core count VMs become increasingly hard to schedule on the pCPU without high physical core counts in the socket.
+A standard Diego cell is 4x16 (XL) by default. At a 4:1 ratio, you have a 16-vCPU budget, or about 12 containers.
 
-HA considerations:
+If you want to run more containers in a cell, scale the vCPUs accordingly.
+However, high core count VMs become increasingly hard to schedule on the pCPU without high physical core counts in the socket.
 
-PAS isn’t considered HA until at least two AZs are defined (three are recommended). Using vSphere HA capabilities in conjunction with PCF HA capabilities is the best of all worlds. PCF gains redundancy thru the AZ construct and the loss of an AZ isn’t considered catastrophic. Using Bosh Ressurector can replace lost VMs as needed to repair a foundation. Foundation backup and restoration is accomplished externally by BBR. Designing for HA in vSphere is beyond the scope of this document, but can be found from VMware.
+HA considerations include the following:
 
-PKS has no inherent HA capabilities to design for. Make the best efforts to have HA design at the IaaS, storage, power and access layers to support PKS.
+* PAS is not considered HA until at least two AZs are defined. Pivotal recommends using three AZs for HA.
+
+    PCF achieves redundancy through the AZ construct and the loss of an AZ is not considered catastrophic.
+    BOSH Resurrector can replace lost VMs as needed to repair a foundation. Foundation backup and restoration is accomplished externally by BBR.
+
+* PKS has no inherent HA capabilities to design for. To support PKS, design HA at the IaaS, storage, power, and access layers.
 
 ### <a id="scaling"></a> Scaling and Capacity Management
 
-Knowing where to get started with PCF can be a confusing task. The reference models do show a lot of capacity in use and a lot of technology in play. It’s perfectly reasonable to want to start small and grow into the reference design over time. Due to many new features in PCF v2.x, growing a foundation is easier than ever before.
+This section provides information about scaling and capacity management for PCF.
 
-#### <a id="small"></a> Starting Small
+#### <a id="small"></a> Small PCF Installations
 
-A small size PCF 2.x foundation is built using the least number of elements and resources needed to start up a PaaS system. This includes:
+A small-sized PCF v2.1 foundation looks as follows:
 
-* 1 vSphere cluster/1 AZ
-* 2 Resource Pools (1 for NSX Components, 1 PAS or PKS)
+* 1 vSphere cluster and 1 AZ
+* 2 resource pools: 1 for NSX-T components and 1 for PAS or PKS
 * 3 hosts minimum for vSphere HA (4 hosts for vSphere VSAN)
-Shared Storage / VSAN
+* Shared storage and VSAN
 * 1 NSX Manager
 * 1 NSX Controller
-* 1 Large edge VM = 4 small LBs
-* Pivotal Cloud Foundry: Ops Manager, Bosh Director, Small-footprint Elastic Runtime
+* 1 Large Edge VM = 4 small LBs
+* Ops Manager, the BOSH Director, and Small Footprint Runtime
 
-This approach is best used as a small starter system, development-only app use or proof-of-concept. The prime reason for categorizing this build as never-for-prod is that SRT (small-footprint Elastic Runtime) has no upgrade path to the standard PAS tile, which is the only supported Elastic Runtime for use as Prod.
+This approach is best used as a small, development-only system or a proof of concept.
+Small Footprint Runtime has no upgrade path to the standard PAS tile.
 
-#### <a id="medium"></a> Medium-Sized Installation
+#### <a id="medium"></a> Medium PCF Installations
 
-Growing to a second AZ/cluster enables valuable HA capabilities in the PaaS and IaaS layers. For this design, it is recommended that SRT be replaced (if scaling up) or not used in favor of PAS. A second AZ draws a doubling of compute capacity and an expansion of the NSX-T footprint.
+Growing to a second AZ and cluster enables HA in the PaaS and IaaS layers. For this design, Pivotal recommends replacing Small Footprint Runtime with PAS. The second AZ doubles compute consumption and expands the NSX-T footprint.
 
-* 2 vSphere cluster/2 AZ
-* 3 Resource Pools (1 for NSX Components, 2 PAS / 1 PKS)
+A medium-sized PCF v2.1 foundation looks as follows:
+
+* 2 vSphere clusters and 2 AZs
+* 3 resource pools: 1 for NSX-T components and for 2 PAS or for 1 PKS
 * 3 hosts minimum for vSphere HA (4 hosts for vSphere VSAN) per cluster
-Shared Storage / VSAN
+* Shared storage and VSAN
 * 1 NSX Manager
-* 2 NSX Controller
-* 1 Large edge VM = 4 small LBs
-* Pivotal Cloud Foundry: Ops Manager, Bosh Director, PAS / PKS
+* 2 NSX Controllers
+* 1 Large Edge VM = 4 small LBs
+* Ops Manager, the BOSH Director, PAS or PKS
 
-#### <a id="production"></a> Full-Sized Installation
+#### <a id="production"></a> Full PCF Installations
 
-The full production-ready approach calls for the best both the PaaS and IaaS have to offer. A third AZ/cluster can be added and more compute + storage comes with it. NSX-T adds a controller for the third AZ and a second Large Edge is added to the cluster. This design satisfies both the VMware and Pivotal best practices on capacity, network and HA alignments.
+A production-ready PCF v2.1 foundation looks as follows: 
 
-* 3 vSphere cluster/3 AZ
-* 4 Resource Pools (1 for NSX Components, 3 PAS / 1 PKS)
+* 3 vSphere clusters and 3 AZs
+* 4 resource pools: 1 for NSX-T components and 3 for PAS or for 1 PKS
 * 3 hosts minimum for vSphere HA (4 hosts for vSphere VSAN)
-Shared Storage / VSAN
+* Shared Storage and VSAN
 * 1 NSX Manager
-* 3 NSX Controller
-* 2 Large edge VM = 8 small LBs
-Pivotal Cloud Foundry: Ops Manager, Bosh Director, PAS / PKS
+* 3 NSX Controllers
+* 2 Large Edge VMs = 8 small LBs
+* Ops Manager, the BOSH Director, PAS, or PKS
+
+This design is based on both the VMware and Pivotal best practices on capacity, network, and HA alignments.
 
 ## <a id="pas-pks"></a> PAS and PKS with NSX-T
 
@@ -370,7 +399,7 @@ This approach ensures that any cross-traffic between PKS and PAS apps stays with
 This also provides a one-stop access point to the whole installation, which simplifies deployment automation for multiple, identical installations.
 
 Note that each design, green PKS and orange PAS, has its own Ops Manager and BOSH Director installation.
-You should not share an Ops Manager and BOSH Director installation between PKS and PAS.
+You should not share an Ops Manager and BOSH Director installation between PKS and PAS in a production environment.
 
 AZs are aligned to vSphere clusters, with resource pools as an optional organizational tool to place multiple foundations into the same capacity.
 PKS v1.0 is a single-AZ deployment.
