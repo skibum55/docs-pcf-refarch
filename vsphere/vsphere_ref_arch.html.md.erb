@@ -119,97 +119,87 @@ PAS requires a number of statically defined networks to host the main components
 
 * Isolation Segment##: `192.168.10.0`- `192.168.63.0` in /24 segments
 
-    Isolation segments can be added to an existing PAS installation. This range of address space is designated for use when adding one or more segments. A new /24 network for this range should be deployed for each new isolation segment. There is reserved capacity for >50 isolation segments of >250 VMs per in this address bank.
+    Isolation segments can be added to an existing PAS installation. This range of address space is designated for use when adding one or more segments. A new /24 network for this range should be deployed for each new isolation segment.
+    There is reserved capacity for more than 50 isolation segments, each having more than 250 VMs, in this address bank.
 
 * On-Demand-Org##: `192.168.128.0/17` = 128 orgs/foundation
 
-    New to the PCF 2.x reference design is the concept of dynamically assigned Org networks that are attached to automatically generated NSX T1 routers, a benefit of NSX-T. The operator doesn’t define these networks in Ops Manager, but rather allows for them to get built by supplying a non-overlapping block of address space for this purpose. This is configurable in NCP Configuration in the NSX-T tile in Ops Manager. The default is /24 (every Org gets a new /24).
+    New to the PCF v2.x reference design is the concept of dynamically assigned org networks that are attached to automatically generated NSX T1 routers.
+    The operator does not define these networks in Ops Manager, but rather allows for them to get built by supplying a non-overlapping block of address space for this purpose. This is configurable in NCP Configuration in the NSX-T tile in Ops Manager. The default is /24. Every org gets a new /24.
 
-This reference uses a pattern that follows previous references, with the main difference being all networks break on the /24 boundary (for easier CIDR math) and the network octet is now numerically sequential (1-2-3).
+This reference uses a pattern that follows previous references. However, all networks now break on the /24 boundary, and the network octet is numerically sequential (1-2-3).
 
 #### <a id="network-pks"></a> Network Requirements for PKS
 
-PKS: `172.20.0.0/16`
-
-New to PCF 2.0 is Pivotal Container Service (PKS). When deploying PKS via Ops Manager, you must allow for a block of address space for dynamic networks that PKS will deploy per namespace. The recommended address space is distinctly different that that used with PAS, to give the operator a quick visual queue as to which jobs relate to what service.
-
-To summarize the complete addressing strategy:
-
-* Infrastructure - 192.168.1.0/24
-* Deployment - 192.168.2.0/24
-* Services - 192.168.3.0/24
-* OD#-Services - 192.168.4.0 - 192.168.9.0 in /24 segments
-* Isolation-Segment## - 192.168.10.0 - 192.168.63.0 in /24 segments
-* Undefined: 192.168.64.0 - 192.168.127.0
-* On-Demand-Org## - 192.168.128.0/17
-PKS - 172.20.0.0/16
+When deploying PKS using Ops Manager, you must allow for a block of address space for dynamic networks that PKS deploys per namespace.
+The recommended address space is `172.20.0.0/16`. It is distinctly different from the PAS address space to give the operator a visual queue.
 
 #### <a id="external-routing"></a> Network Requirements for External Routing
 
-Routable external IPs on the Provider side, for example for NATs, PAS Orgs and load balancers get assigned to the T0 router front-ending the PCF installation. There are two approaches to assigning address space blocks to this job, each with its own ramifications.
+Routable external IPs on the provider side, for example, for NATs, PAS orgs, and load balancers are assigned to the T0 router, which is located in front of the PCF installation. There are two approaches to assigning address space blocks to this job:
 
-* Without PKS at all, or With PKS Ingress: The T0 router needs some routable address space to advertise on the BGP network with its peers. Select a network range with ample address space that can be split into two logical jobs, one job being an advertised as a route for traffic and the other job is for aligning T0 DNATs/SNATs, load balancers and other jobs. Unlike NSX-V, you will consume much more address space for SNATs than before.
+* Without PKS or with PKS ingress: The T0 router needs some routable address space to advertise on the BGP network with its peers. Select a network range with ample address space that can be split into two logical jobs, one job being advertised as a route for traffic and the other job is for aligning T0 DNATs and SNATs, load balancers, and other jobs. Unlike with NSX-V, SNATs consume much more address space than before.
 
-* With PKS No Ingress: Relative to above, this approach has much higher address space consumption for load balancer VIPs, so allow for 4x the address space due to the fact that Kubernetes service types allocate addresses very frequently.
+* With PKS no ingress: Relative to above, this approach has much higher address space consumption for load balancer VIPs. Therefore, allow for 4x the address space due to the fact that Kubernetes service types allocate addresses frequently.
 
-    Reference: [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+Provider routable address space: /25 (or /23 for PKS no ingress)
 
-* Provider Routable Address Space: /25 (or /23 for PKS No Ingress)
-
-NSX-T handles the routing between a T0 router and any T1 routers associated with it. There are no design parameters needed from Pivotal to accomplish this. For the purposes of PCF, the T0/T1 routing relationship “just works”.
+NSX-T handles the routing between a T0 router and any T1 routers associated with it.
 
 ### <a id="pas-nsxt"></a> PAS with NSX-T
 
-Expanding PAS with SDN features is best considered as a greenfield effort. Inserting an SDN layer under a working PAS installation is non-trivial and likely will trigger a rebuild. NSX-T constructs that can be used by PAS include:
+Expanding PAS with SDN features is best considered as a greenfield effort. Inserting an SDN layer under a working PAS installation is non-trivial and likely triggers a rebuild. NSX-T constructs that can be used by PAS include the following:
 
-* Logical Networks (vWires), encapsulated broadcast domains
-* VLAN exhaustion avoidance thru the use of Logical Networks
+* Logical networks (vWires), encapsulated broadcast domains
+* VLAN exhaustion avoidance through the use of logical networks
 * Routing services and NAT/SNAT to network fence the PCF installation
-* Load balancing services to pool systems such as gorouters
+* Load balancing services to pool systems such as Gorouters
 * SSL termination at the load balancer
-* Distributed routing and firewalling services at the hypervisor
+* Distributed routing and firewall services at the hypervisor
 
 <%= image_tag('../images/pas-with-nsxt.png') %>
 
 [View a larger version of this diagram](../images/pas-with-nsxt.png)
 
-Using the available NCP tile enables a sophisticated container networking stack in place of the built-in “silk” stack and interlocks with NSX-T already deployed in the IaaS. The NCP tile can not be used unless NSX-T has already been established in the IaaS. These technologies can not be retrofitted into an established PKS or PAS installation; please plan accordingly.
+The VMware NSX-T Container Plug-In for PCF tile, which provides a container networking stack, interlocks with NSX-T already deployed in the IaaS. This tile cannot be used unless NSX-T has already been established in the IaaS. These technologies can not be retrofitted into an established PKS or PAS installation.
 
-Be prepared to supply:
+You need the following:
 
-* NSX Manager Host
-* Username/Password
-* CA Cert of NSX Manager
-* PAS Foundation Name (must match the tag added to T0 router, External NAT Pool, and IP Block)
-* Subnet Prefix (controls the size of each Org, defaults to /24, i.e 254 addresses)
-* Enable SNAT for Container Networks (Automatically uses an IP from the external NAT pool to SNAT outbound from each Org on a unique IP)
+* NSX Manager host
+* Username and password
+* CA certificate of NSX Manager
+* PAS foundation name that must match the tag added to T0 router, external NAT pool, and IP block
+* Subnet prefix, which controls the size of each org and defaults to /24, that is, 254 addresses
+* SNAT enabled for container networks (Automatically uses an IP from the external NAT pool to SNAT outbound from each org on a unique IP)
 
-Each new “job”, like a Isolation Segment, falls to a broadcast domain/logical switch connected to a T1 router acting as the gateway to that network. This approach provides a convenient DNAT/SNAT control point and a firewall boundary. The one exception to this is the Services network, which shares a T1 router with any associated OD-Services# networks, as all of these are considered part of the same system and inserting any *NATs/firewall rules between them isn’t needed or recommended.
+Each new job, like an isolation segment, falls to a broadcast domain or logical switch connected to a T1 router acting as the gateway to that network.
+This approach provides a DNAT and SNAT control point and a firewall boundary.
+
+The one exception to this is the Services network, which shares a T1 router with any associated OD-Services# networks.
+Because these networks are considered part of the same system, inserting any NATs or firewall rules between them is not recommended.
 
 #### <a id="load-balancing"></a> Load Balancing for PAS
 
-Without NSX-T in use, a suitable load balancer must be found to send traffic to the gorouters and other systems. All installations approaching Prod-level use with make use of external load balancing from hardware appliance vendors or other network-layer solutions.
+Without NSX-T, a suitable load balancer must be found to send traffic to the Gorouters and other systems. Installations approaching production level typically use external load balancing from hardware appliance vendors or other network-layer solutions.
 
-With NSX-T, load balancing is available in the SDN layer as a feature. These load balancers are a logical entity tied to the resources in the Edge Cluster and align to the network(s) represented by a T1 router. They function as a Layer 4 load balancer. There is no SSL termination available on the NSX-T load balancer at this time, so you will pass that thru to the gorouters.
+With NSX-T, load balancing is available in the SDN layer.
+These load balancers are a logical entity tied to the resources in the Edge Cluster and align to the network or networks represented by a T1 router.
+They function as a Layer 4 load balancer.
+There is no SSL termination available on the NSX-T load balancer at this time.
 
-Common deployments of load balancing in PAS are:
+Common deployments of load balancing in PAS are as follows:
 
-* HTTP/HTTPS traffic to/from gorouters
-* TCP traffic to/from TCP routers
+* HTTP/HTTPS traffic to and from Gorouters
+* TCP traffic to and from TCP routers
 * MySQL proxies
-* Diego Brains
+* Diego Brain
 
-NSX-T load balancers can support many VIPs, so it’s best to think of deploying one load balancer per network (T1) and one-to-many VIPs on that load balancer per job. Edge Cluster resources can get consumed quickly, so design carefully how many load balancers are needed vs how much capacity is available for them.
+NSX-T load balancers can support many VIPs, so it is best to think of deploying one load balancer per network (T1) and one-to-many VIPs on that load balancer per job.
+When designing your deployment, consider how many load balancers are needed and how much capacity is available for them.
 
 ### <a id="pks-nsxt"></a> PKS with NSX-T
 
-Pivotal Container Service is supplied with NSX-T SDN included, along with the associated licensing. The assumption is that the reader will want to use all of this technology at once to get full benefit from both. However, the bundled NSX-T SDN solution can be ignored, as there is a built-in network stack (flannel) that takes care of container networking.
-
-#### <a id="without-nsxt"></a> Deploying Without NSX-T
-
-Deploy the PKS tile in Ops Manager (either alongside PAS tile or without) and choose “flannel” on the networking tab. Select from networks already identified in Ops Manager to deploy the PKS API Gateway and the Cluster(s). If following the reference design for PAS, you can use the “Services” and “OD-Services#” networks for these jobs. If no PAS networks are available, define a network named “PKS-Services” and another named “PKS-Cluster” in Ops Manager for these jobs.
-
-#### <a id="with-nsxt"></a> Deploying with NSX-T
+PKS is supplied with NSX-T SDN included, along with the associated licensing.
 
 You will supply certain details about the IaaS SDN layer to allow for dynamic constructs to be built. You’ll be asked to supply:
 
@@ -224,6 +214,8 @@ You will supply certain details about the IaaS SDN layer to allow for dynamic co
 <%= image_tag('../images/pks-with-nsxt.png') %>
 
 New T1 routers will be spawned on-demand as new namespaces are added to PKS. These can grow rapidly, so a large address block is desired for this use. The size of the address block is configurable and /24 by default.
+
+If you want to deploy PKS without NSX-T, see [Deploying Without NSX-T](#without-nsxt) for more information.
 
 ##### <a id="pks-ingress"></a> Ingress Routing and Load Balancing for PKS
 
@@ -272,6 +264,9 @@ spec:
     protocol: TCP
     name: web
 ```
+#### <a id="without-nsxt"></a> Deploying Without NSX-T
+
+Deploy the PKS tile in Ops Manager (either alongside PAS tile or without) and choose “flannel” on the networking tab. Select from networks already identified in Ops Manager to deploy the PKS API Gateway and the Cluster(s). If following the reference design for PAS, you can use the “Services” and “OD-Services#” networks for these jobs. If no PAS networks are available, define a network named “PKS-Services” and another named “PKS-Cluster” in Ops Manager for these jobs.
 
 ### <a id="storage"></a> Storage Design
 
