@@ -102,23 +102,24 @@ This sections provides information about network requirements, routing, and load
 
 #### <a id="network-pas"></a> Network Requirements for PAS
 
-PAS requires a number of statically defined networks to host the main elements it’s composed of. If we consider the “inside” of an NSX-T deployment, we define a series of non-routable address banks that the NSX-T routers will manage for us. Similar to reference designs in the past, those are the following:
+PAS requires a number of statically defined networks to host the main components it is composed of. If you consider the “inside” of an NSX-T deployment, a series of non-routable address banks that the NSX-T routers manage is defined as follows:
 
-<p class="note"><strong>Note</strong>: Relative to reference designs for PCF v1.xx, these static networks have a smaller host address space assigned. With NSX-T, you will find that building for many dynamically assigned networks is a better strategy than a few, very large networks as in the past.</p>
+<p class="note"><strong>Note</strong>: These static networks have a smaller host address space assigned than reference designs for PCF v1.xx.</p>
 
 * Infrastructure: `192.168.1.0/24`
 * Deployment: `192.168.2.0/24`
 * Services: `192.168.3.0/24`
 
-    The Services network is handy for use with Ops Manager tiles that you might add in addition to PAS. You can think of the Services network as the “everything else not PAS” network. Some of these tiles can call for additional network capacity to grow into on demand. Historically, we’ve allowed for a network called “Dynamic Services” for this use. Going forward, it is recommended that you consider adding a network per tile that would need this and pair them up in the tile’s config.
+    The Services network can be used with Ops Manager tiles that you might install in addition to PAS.
+    Some of these tiles can call for additional network capacity on demand. It is recommended that you consider adding a network per tile that needs this and pair them up in the tile’s configuration.
 
 * OD#-Services: `192.168.4.0` - `192.168.9.0` in /24 segments
 
-    Example: Redis tile asks for “Network” and “Services Network”. The first one is for placing the broker and the second one is for deploying worker VMs to support the service. For this we would deploy a new network “OD-Services1” and tell Reddis to use the “Services” network for the broker and the “OD-Services1” network for the workers. The next tile can also use “Services” for the broker and a new “OD-Services2” network for workers, and so on.
+    For example, the Redis for PCF tile asks for Network and Services Network. The first one is for placing the broker and the second one is for deploying worker VMs to support the service. For this, you can deploy a new network OD-Services1 and tell Redis for PCF to use the Services network for the broker and the OD-Services1 network for the workers. The next tile can also use the Services network for the broker and a new OD-Services2 network for workers, and so on.
 
 * Isolation Segment##: `192.168.10.0`- `192.168.63.0` in /24 segments
 
-    Isolation Segments can be added quickly and easily to an existing PAS installation. This range of address space is designated for use when adding one of more of them. A new /24 network for this range should be deployed for each new Isolation Segment. There’s reserved capacity for >50 Isolation Segments of >250 VMs per in this address bank.
+    Isolation segments can be added to an existing PAS installation. This range of address space is designated for use when adding one or more segments. A new /24 network for this range should be deployed for each new isolation segment. There is reserved capacity for >50 isolation segments of >250 VMs per in this address bank.
 
 * On-Demand-Org##: `192.168.128.0/17` = 128 orgs/foundation
 
